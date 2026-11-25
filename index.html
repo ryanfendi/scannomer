@@ -2,39 +2,115 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#6d28d9">
-  <title>SCANNOMER - Scan Number</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#7028df">
+  <title>SCANNOMER - Scan Number, Connect Payment</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>SCANNOMER</h1>
-    <p>SCAN NUMBER. CONNECT PAYMENT.</p>
-  </header>
 
-  <main>
-    <section class="hero">
-      <div class="scan-icon">⌗</div>
-      <h2>Satu Nomor, Banyak Tujuan</h2>
-      <p>Scan nomor toko untuk membuka QRIS
-      dan berbagai tautan pembayaran.</p>
-      <button id="scanButton">MULAI SCAN</button>
-    </section>
+<header>
+  <h1>SCANNOMER</h1>
+  <p>SCAN NUMBER. CONNECT PAYMENT.</p>
+</header>
 
-    <section class="features">
-      <h3>Fitur SCANNOMER</h3>
-      <p>✓ Scan QR nomor HP toko</p>
-      <p>✓ Tampilkan QRIS toko</p>
-      <p>✓ Buka link pembayaran</p>
-      <p>✓ Dashboard pemilik toko</p>
-    </section>
-  </main>
+<main>
 
-  <footer>
-    <p>© 2026 SCANNOMER</p>
-  </footer>
+  <section class="hero" id="home">
+    <div class="scan-icon">⌗</div>
+    <h2>Satu Nomor, Banyak Tujuan</h2>
+    <p>Scan QR nomor HP toko untuk menemukan QRIS dan link pembayaran.</p>
+    <button id="scanButton">MULAI SCAN QR</button>
+    <button id="loginButton" style="background:#24143d">
+      LOGIN PEMILIK TOKO
+    </button>
+  </section>
 
-  <script src="app.js"></script>
+  <section class="card hidden" id="scannerSection">
+    <h3>Scan QR SCANNOMER</h3>
+    <p class="muted">Arahkan kamera ke QR identitas toko.</p>
+    <div id="reader" style="width:100%;margin-top:15px"></div>
+    <button id="stopScan" style="background:#777">TUTUP SCANNER</button>
+  </section>
+
+  <section class="card hidden" id="loginSection">
+    <h3>Login Pemilik Toko</h3>
+    <p class="muted">Masukkan nomor HP yang sudah terdaftar.</p>
+    <input id="phoneInput" type="tel" placeholder="+6281234567890">
+    <div id="recaptcha-container"></div>
+    <button id="sendOtp">KIRIM KODE OTP</button>
+
+    <div id="otpArea" class="hidden">
+      <input id="otpInput" type="text" inputmode="numeric"
+        placeholder="Masukkan 6 digit OTP">
+      <button id="verifyOtp">VERIFIKASI OTP</button>
+    </div>
+
+    <p id="loginMessage" class="muted"></p>
+    <button id="closeLogin" style="background:#777">KEMBALI</button>
+  </section>
+
+  <section class="card hidden" id="dashboard">
+    <h3>Dashboard Pemilik Toko</h3>
+    <p id="ownerInfo" class="muted"></p>
+
+    <h3 style="margin-top:20px">Profil Toko</h3>
+    <input id="storeName" placeholder="Nama toko">
+    <input id="storeAddress" placeholder="Alamat toko">
+    <button id="saveStore">SIMPAN PROFIL TOKO</button>
+
+    <div class="result">
+      <h3>QR Identitas Toko</h3>
+      <div id="storeQr" style="display:flex;justify-content:center;padding:15px"></div>
+      <p class="muted">Pelanggan memindai QR ini untuk menemukan pembayaran toko.</p>
+      <button id="downloadQr">DOWNLOAD QR TOKO</button>
+    </div>
+
+    <h3 style="margin-top:25px">Tambah QRIS / Link</h3>
+    <input id="paymentTitle" placeholder="Nama, contoh: QRIS Utama">
+    <select id="paymentType" style="width:100%;padding:14px;margin-top:10px;border-radius:12px">
+      <option value="qris">QRIS</option>
+      <option value="link">Link Pembayaran</option>
+      <option value="website">Website / Toko Online</option>
+      <option value="other">Link Lainnya</option>
+    </select>
+    <input id="paymentUrl" type="url"
+      placeholder="https://alamat-link-atau-gambar-qris">
+    <button id="addPayment">TAMBAHKAN</button>
+
+    <h3 style="margin-top:25px">Daftar Pembayaran</h3>
+    <div id="paymentList"></div>
+
+    <button id="logoutButton" style="background:#dc2626">
+      KELUAR
+    </button>
+  </section>
+
+  <section class="card hidden" id="storeResult">
+    <h3 id="resultStoreName">TOKO</h3>
+    <p id="resultStorePhone" class="muted"></p>
+    <div id="publicPayments"></div>
+    <button id="backHome" style="background:#777">KEMBALI</button>
+  </section>
+
+  <section class="features">
+    <h3>Fitur SCANNOMER</h3>
+    <p>✓ Scan QR identitas nomor HP</p>
+    <p>✓ Pembayaran QRIS</p>
+    <p>✓ Link pembayaran</p>
+    <p>✓ Dashboard pemilik toko</p>
+    <p>✓ Login OTP nomor HP</p>
+  </section>
+
+</main>
+
+<footer>
+  <p>© 2026 SCANNOMER</p>
+  <p>SCAN NUMBER. CONNECT PAYMENT.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
