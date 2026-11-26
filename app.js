@@ -538,11 +538,17 @@ async function startScanner() {
 
         let storeId = decodedText.trim();
 
-        if (storeId.startsWith("SCANNOMER:")) {
-          storeId = storeId.replace("SCANNOMER:", "");
-        } else {
-          storeId = storeId.replace(/\D/g, "");
-        }
+if (storeId.startsWith("SCANNOMER:")) {
+  storeId = storeId.replace("SCANNOMER:", "");
+}
+
+storeId = storeId.replace(/\D/g, "");
+
+if (!storeId) {
+  alert("QR tidak berisi nomor HP toko.");
+  showScreen("home");
+  return;
+}
 
         await findStore(storeId);
       },
