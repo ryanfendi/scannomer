@@ -1,5 +1,10 @@
+/* =====================================================
+   SCANNOMER - SMART QR & DIGITAL PHONE CARD
+   Firebase SDK 11.6.0
+   ===================================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { initializeApp } from
+  "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 
 import {
   getAuth,
@@ -14,18 +19,19 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   collection,
   addDoc,
   getDocs,
   deleteDoc,
   query,
-  where,
+  orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
-// ==================================
-// 1. FIREBASE CONFIGURATION
-// ==================================
+/* =====================================================
+   1. FIREBASE CONFIGURATION
+   ===================================================== */
 
 const firebaseConfig = {
   apiKey: "AIzaSyAyeuTYfD_zUY4E8xwyMzitZe3cga0t4Z8",
@@ -40,632 +46,1059 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ==================================
-// 2. ELEMENTS
-// ==================================
+/* =====================================================
+   2. GLOBAL STATE
+   ===================================================== */
 
-const $ = id => document.getElementById(id);
-
+let currentUser = null;
+let currentStore = null;
 let confirmationResult = null;
 let recaptchaVerifier = null;
-let scanner = null;
-let currentStoreId = null;
+let cameraStream = null;
+let currentPaymentMethods = [];
 
-// ==================================
-// 3. SCREEN MANAGEMENT
-// ==================================
+/* =====================================================
+   3. ELEMENT HELPER
+   ===================================================== */
 
-const sections = [
-  "home",
-  "scannerSection",
-  "loginSection",
-  "dashboard",
-  "storeResult"
-];
+const $ = (id) => document.getElementById(id);
 
-function showScreen(id) {
-  sections.forEach(section => {
-    $(section).classList.toggle("hidden", section !== id);
-  });
+function show(element, visible = true) {
+  if (element) {
+    element.style.display = visible ? "" : "none";
+  }
 }
 
-$("scanButton").onclick = () => {
-  showScreen("scannerSection");
-  startScanner();
-};
+function message(element, text, error = false) {
+  if (!element) return;
 
-$("loginButton").onclick = () => {
-  showScreen("loginSection");
-};
+  element.textContent = text;
+  element.style.color = error ? "#dc2626" : "#16a34a";
+}
 
-$("closeLogin").onclick = () => showScreen("home");
-$("backHome").onclick = () => showScreen("home");
+function normalizePhone(value) {
+  let number = String(value || "").replace(/\D/g, "");
 
-// ==================================
-// 4. PHONE OTP LOGIN
-// ==================================
+  if (number.startsWith("0")) {
+    number = "62" + number.substring(1);
+  } else if (number.startsWith("8")) {
+    number = "62" + number;
+  }
 
-function setupRecaptcha() {
-  if (recaptchaVerifier) return;
+  return number;
+}
+
+function localPhone(value) {
+  const number = normalizePhone(value);
+
+  if (number.startsWith("62")) {
+    return "0" + number.substring(2);
+  }
+
+  return number;
+}
+
+function phoneE164(value) {
+  return "+" + normalizePhone(value);
+}
+
+function storeIdFromPhone(value) {
+  return normalizePhone(value);
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[char]);
+}
+
+/* =====================================================
+   4. DIGITAL CARD
+   KARTU TANPA QR CODE
+   ===================================================== */
+
+function renderDigitalCard() {
+  if (!$("storeQr")) return;
+
+  // Pastikan tidak ada QR identitas pada kartu digital.
+  $("storeQr").innerHTML = "";
+  $("storeQr").style.display = "none";
+
+  const card = document.getElementById("digitalCard");
+
+  if (card) {
+    card.innerHTML = `
+      <div style="
+        background:linear-gradient(135deg,#7028df,#a855f7);
+        color:white;
+        padding:30px 20px;
+        border-radius:22px;
+        text-align:center;
+        box-shadow:0 10px 30px #7028df30;
+      ">
+        <div style="font-size:12px;letter-spacing:3px;">
+          SCANNOMER
+        </div>
+
+        <h2 style="margin:22px 0 12px;font-size:25px;">
+          ${escapeHTML(currentStore?.name || "NAMA TOKO")}
+        </h2>
+
+        <div style="
+          font-size:12px;
+          opacity:.85;
+          letter-spacing:2px;
+        ">
+          SCAN NOMER HP
+        </div>
+
+        <div style="
+          font-size:27px;
+          font-weight:800;
+          margin:12px 0;
+          letter-spacing:1px;
+          word-break:break-word;
+        ">
+          ${escapeHTML(localPhone(currentStore?.phoneE164 || ""))}
+        </div>
+
+        <div style="font-size:12px;opacity:.8;">
+          ${escapeHTML(currentStore?.address || "")}
+        </div>
+      </div>
+    `;
+  }
+
+  const phone = $("cardPhone");
+  if (phone) {
+    phone.textContent = localPhone(currentStore?.phoneE164 || "");
+  }
+
+  const name = $("cardStoreName");
+  if (name) {
+    name.textContent = currentStore?.name || "";
+  }
+}
+
+/* =====================================================
+   5. LOGIN PEMILIK TOKO DENGAN SMS OTP
+   ===================================================== */
+
+function openLogin() {
+  show($("loginSection"), true);
+  show($("home"), false);
+}
+
+function closeLogin() {
+  show($("loginSection"), false);
+  show($("home"), true);
+}
+
+async function createRecaptcha() {
+  if (recaptchaVerifier) {
+    try {
+      await recaptchaVerifier.clear();
+    } catch (_) {}
+  }
 
   recaptchaVerifier = new RecaptchaVerifier(
     auth,
     "recaptcha-container",
     {
       size: "normal",
-      callback: () => {
-        $("loginMessage").textContent = "Verifikasi keamanan berhasil.";
-      },
+      callback: () => {},
       "expired-callback": () => {
-        $("loginMessage").textContent = "Captcha kedaluwarsa. Muat ulang halaman.";
+        message($("loginMessage"), "Verifikasi CAPTCHA kedaluwarsa.", true);
       }
     }
   );
+
+  await recaptchaVerifier.render();
 }
 
-$("sendOtp").onclick = async () => {
+async function sendOTP() {
+  const input = $("phoneInput");
+  const phone = input?.value.trim();
+
+  if (!phone) {
+    message($("loginMessage"), "Masukkan nomor HP terlebih dahulu.", true);
+    return;
+  }
+
+  const normalized = normalizePhone(phone);
+
+  if (!/^62[0-9]{8,13}$/.test(normalized)) {
+    message($("loginMessage"), "Nomor HP Indonesia tidak valid.", true);
+    return;
+  }
+
   try {
-    const phone = $("phoneInput").value.trim();
+    message($("loginMessage"), "Menyiapkan verifikasi...");
 
-    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
-      alert("Gunakan format internasional. Contoh: +6281234567890");
-      return;
-    }
-
-    $("loginMessage").textContent = "Menyiapkan verifikasi...";
-
-    setupRecaptcha();
-
-    const verifier = recaptchaVerifier;
-    await verifier.render();
+    await createRecaptcha();
 
     confirmationResult = await signInWithPhoneNumber(
       auth,
-      phone,
-      verifier
+      "+" + normalized,
+      recaptchaVerifier
     );
 
-    $("otpArea").classList.remove("hidden");
-    $("loginMessage").textContent = "OTP berhasil dikirim. Masukkan kode.";
+    show($("otpArea"), true);
 
+    message($("loginMessage"), "Kode OTP telah dikirim melalui SMS.");
   } catch (error) {
     console.error(error);
-    $("loginMessage").textContent = "Gagal: " + error.message;
-
-    if (recaptchaVerifier) {
-      recaptchaVerifier.clear();
-      recaptchaVerifier = null;
-    }
+    message(
+      $("loginMessage"),
+      error.message || "Gagal mengirim OTP.",
+      true
+    );
   }
-};
+}
 
-$("verifyOtp").onclick = async () => {
+async function verifyOTP() {
+  const code = $("otpInput")?.value.trim();
+
+  if (!code || !confirmationResult) {
+    message($("loginMessage"), "Masukkan kode OTP.", true);
+    return;
+  }
+
   try {
-    const code = $("otpInput").value.trim();
-
-    if (!confirmationResult || !code) {
-      alert("Masukkan kode OTP terlebih dahulu.");
-      return;
-    }
-
     await confirmationResult.confirm(code);
-
-    $("loginMessage").textContent = "Login berhasil.";
-
+    message($("loginMessage"), "Login berhasil.");
   } catch (error) {
     console.error(error);
-    $("loginMessage").textContent = "OTP salah atau kedaluwarsa.";
+    message($("loginMessage"), "Kode OTP salah atau kedaluwarsa.", true);
   }
-};
+}
 
-// ==================================
-// 5. AUTH STATE
-// ==================================
+/* =====================================================
+   6. AUTH STATE
+   ===================================================== */
 
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+
   if (user) {
-    $("ownerInfo").textContent =
-      "Nomor HP terverifikasi: " + user.phoneNumber;
+    show($("loginSection"), false);
+    show($("home"), false);
+    show($("dashboard"), true);
 
-    showScreen("dashboard");
-
-    await loadStore();
+    await loadOwnerStore();
   } else {
-    showScreen("home");
+    currentStore = null;
+
+    show($("dashboard"), false);
+    show($("loginSection"), false);
+    show($("home"), true);
   }
 });
 
-// ==================================
-// 6. STORE PROFILE
-// ==================================
+/* =====================================================
+   7. LOAD PROFIL TOKO
+   ===================================================== */
 
-function storeDocumentId(phone) {
-  return phone.replace(/\D/g, "");
-}
+async function loadOwnerStore() {
+  if (!currentUser) return;
 
-async function loadStore() {
-  const user = auth.currentUser;
-  if (!user || !user.phoneNumber) return;
+  const userPhone = currentUser.phoneNumber;
 
-  currentStoreId = storeDocumentId(user.phoneNumber);
-
-  const ref = doc(db, "stores", currentStoreId);
-  const snap = await getDoc(ref);
-
-  if (snap.exists()) {
-    const data = snap.data();
-
-    if (data.ownerUid !== user.uid) {
-      alert("Nomor toko ini sudah digunakan akun lain.");
-      await signOut(auth);
-      return;
-    }
-
-    $("storeName").value = data.name || "";
-    $("storeAddress").value = data.address || "";
+  if (!userPhone) {
+    alert("Nomor HP akun tidak ditemukan.");
+    return;
   }
 
-  renderStoreQr();
+  const id = storeIdFromPhone(userPhone);
+  const ref = doc(db, "stores", id);
+  const snapshot = await getDoc(ref);
+
+  if (snapshot.exists()) {
+    currentStore = {
+      id,
+      ...snapshot.data()
+    };
+  } else {
+    currentStore = {
+      id,
+      ownerUid: currentUser.uid,
+      phoneE164: userPhone,
+      name: "",
+      address: "",
+      published: false
+    };
+
+    await setDoc(ref, {
+      ownerUid: currentUser.uid,
+      phoneE164: userPhone,
+      name: "",
+      address: "",
+      published: false,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  if ($("ownerInfo")) {
+    $("ownerInfo").textContent = localPhone(userPhone);
+  }
+
+  if ($("storeName")) {
+    $("storeName").value = currentStore.name || "";
+  }
+
+  if ($("storeAddress")) {
+    $("storeAddress").value = currentStore.address || "";
+  }
+
+  renderDigitalCard();
   await loadPayments();
 }
 
+/* =====================================================
+   8. SIMPAN PROFIL TOKO
+   ===================================================== */
 
-$("saveStore").onclick = async () => {
-  try {
-    const user = auth.currentUser;
+async function saveStore() {
+  if (!currentUser || !currentStore) return;
 
-    if (!user) {
-      alert("Silakan login terlebih dahulu.");
-      return;
-    }
+  const name = $("storeName")?.value.trim() || "";
+  const address = $("storeAddress")?.value.trim() || "";
 
-    if (!user.phoneNumber) {
-      alert("Nomor HP belum terverifikasi.");
-      return;
-    }
-
-    const name = $("storeName").value.trim();
-    const address = $("storeAddress").value.trim();
-
-    if (!name || !address) {
-      alert("Nama dan alamat toko wajib diisi.");
-      return;
-    }
-
-    currentStoreId = user.phoneNumber.replace(/\D/g, "");
-
-    const ref = doc(db, "stores", currentStoreId);
-
-    // Periksa dokumen toko
-    const old = await getDoc(ref);
-
-    if (old.exists()) {
-      if (old.data().ownerUid !== user.uid) {
-        alert("Nomor toko sudah dimiliki akun lain.");
-        return;
-      }
-    }
-
-    // Simpan profil toko
-    await setDoc(ref, {
-      ownerUid: user.uid,
-      phoneE164: user.phoneNumber,
-      name: name,
-      address: address,
-      published: true,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    // Pastikan data berhasil tersimpan
-    const verify = await getDoc(ref);
-
-    if (!verify.exists()) {
-      throw new Error("Dokumen toko belum berhasil dibuat.");
-    }
-
-    renderStoreQr();
-
-    alert("BERHASIL! Profil toko SCANNOMER tersimpan.");
-
-  } catch (error) {
-    console.error("SCANNOMER SAVE ERROR:", error);
-
-    alert(
-      "Gagal menyimpan profil toko.\n\n" +
-      "Kode: " + (error.code || "unknown") +
-      "\nPesan: " + error.message
-    );
-  }
-};
-
-
-
-// ==================================
-// 7. SCANNOMER BUSINESS CARD
-// ==================================
-
-function renderStoreQr() {
-  const user = auth.currentUser;
-
-  if (!user || !user.phoneNumber || !currentStoreId) {
+  if (!name) {
+    alert("Nama toko wajib diisi.");
     return;
   }
 
-  const name = $("storeName").value.trim() || "NAMA TOKO";
-  const address = $("storeAddress").value.trim() || "Alamat toko";
-
-  $("cardShopName").textContent = name;
-  $("cardAddress").textContent = address;
-  $("cardPhone").textContent = user.phoneNumber;
-
-  const qrContainer = $("storeQr");
-  qrContainer.innerHTML = "";
-
-  // QR berisi nomor HP toko tanpa tanda +
-  const phoneQR = currentStoreId;
-
-  new QRCode(qrContainer, {
-    text: phoneQR,
-    width: 180,
-    height: 180,
-    correctLevel: QRCode.CorrectLevel.H
-  });
-}
-
-// ==================================
-// 8. BUSINESS CARD DESIGN
-// ==================================
-
-function updateBusinessCard() {
-  const card = $("storeCard");
-
-  const design = $("cardDesign").value;
-  const primary = $("cardColor").value;
-  const background = $("cardBgColor").value;
-
-  card.dataset.design = design;
-
-  card.style.setProperty(
-    "--card-primary",
-    primary
-  );
-
-  card.style.setProperty(
-    "--card-background",
-    background
-  );
-
-  renderStoreQr();
-}
-
-$("cardDesign").onchange = updateBusinessCard;
-$("cardColor").oninput = updateBusinessCard;
-$("cardBgColor").oninput = updateBusinessCard;
-
-$("storeName").addEventListener("input", renderStoreQr);
-$("storeAddress").addEventListener("input", renderStoreQr);
-
-// ==================================
-// 9. DOWNLOAD BUSINESS CARD
-// ==================================
-
-$("downloadQr").onclick = async () => {
   try {
-    if (!currentStoreId) {
-      alert("Simpan profil toko terlebih dahulu.");
-      return;
-    }
+    await updateDoc(doc(db, "stores", currentStore.id), {
+      name,
+      address,
+      updatedAt: serverTimestamp()
+    });
 
-    const canvas = await html2canvas(
-      $("storeCard"),
-      {
-        scale: 3,
-        backgroundColor: null,
-        useCORS: true
-      }
-    );
+    currentStore.name = name;
+    currentStore.address = address;
+
+    renderDigitalCard();
+
+    alert("Profil toko berhasil disimpan.");
+  } catch (error) {
+    console.error(error);
+    alert("Gagal menyimpan profil: " + error.message);
+  }
+}
+
+/* =====================================================
+   9. DOWNLOAD KARTU DIGITAL
+   ===================================================== */
+
+async function downloadCard() {
+  const card = $("digitalCard");
+
+  if (!card) {
+    alert("Elemen kartu digital #digitalCard tidak ditemukan.");
+    return;
+  }
+
+  if (!window.html2canvas) {
+    alert("Library html2canvas belum dimuat.");
+    return;
+  }
+
+  try {
+    const canvas = await html2canvas(card, {
+      backgroundColor: null,
+      scale: 3
+    });
 
     const link = document.createElement("a");
-
-    link.download =
-      "SCANNOMER-" +
-      currentStoreId +
-      ".png";
-
+    link.download = "SCANNOMER-Kartu-Toko.png";
     link.href = canvas.toDataURL("image/png");
-
     link.click();
-
   } catch (error) {
     console.error(error);
-    alert("Gagal mengunduh kartu: " + error.message);
+    alert("Gagal mengunduh kartu.");
   }
-};
+}
 
-// ==================================
-// 10. PRINT BUSINESS CARD
-// ==================================
+/* =====================================================
+   10. SMART QR - DETEKSI QR DARI GAMBAR
+   ===================================================== */
 
-$("printCard").onclick = () => {
-  if (!currentStoreId) {
-    alert("Simpan profil toko terlebih dahulu.");
-    return;
-  }
+async function decodeQRFromFile(file) {
+  if (!file) return null;
 
-  window.print();
-};
-
-// ==================================
-// 11. SCANNOMER BUSINESS CARD INIT
-// ==================================
-
-$("cardDesign").value = "purple";
-updateBusinessCard();
-
-// ==================================
-// 8. ADD PAYMENT METHODS
-// ==================================
-
-$("addPayment").onclick = async () => {
-  try {
-    const user = auth.currentUser;
-
-    if (!user || !currentStoreId) return;
-
-    const title = $("paymentTitle").value.trim();
-    const type = $("paymentType").value;
-    const url = $("paymentUrl").value.trim();
-
-    if (!title || !url) {
-      alert("Nama dan link wajib diisi.");
-      return;
-    }
-
-    let parsedUrl;
-
-    try {
-      parsedUrl = new URL(url);
-    } catch {
-      alert("Link tidak valid.");
-      return;
-    }
-
-    if (parsedUrl.protocol !== "https:") {
-      alert("Gunakan link HTTPS.");
-      return;
-    }
-
-    const storeRef = doc(db, "stores", currentStoreId);
-    const storeSnap = await getDoc(storeRef);
-
-    if (!storeSnap.exists() ||
-        storeSnap.data().ownerUid !== user.uid) {
-      alert("Simpan profil toko terlebih dahulu.");
-      return;
-    }
-
-    await addDoc(
-      collection(db, "stores", currentStoreId, "payment_methods"),
-      {
-        ownerUid: user.uid,
-        title,
-        type,
-        url,
-        active: true,
-        createdAt: serverTimestamp()
-      }
+  if (!("BarcodeDetector" in window)) {
+    throw new Error(
+      "Browser belum mendukung pembaca QR gambar. Gunakan Chrome terbaru."
     );
-
-    $("paymentTitle").value = "";
-    $("paymentUrl").value = "";
-
-    await loadPayments();
-
-    alert("Pembayaran berhasil ditambahkan!");
-
-  } catch (error) {
-    console.error(error);
-    alert("Gagal menambahkan: " + error.message);
   }
-};
 
-// ==================================
-// 9. LOAD PAYMENT METHODS
-// ==================================
+  const detector = new BarcodeDetector({
+    formats: ["qr_code"]
+  });
 
-async function loadPayments() {
-  if (!currentStoreId) return;
+  const bitmap = await createImageBitmap(file);
+  const results = await detector.detect(bitmap);
 
-  const ref = collection(
+  if (!results.length) {
+    throw new Error("QR Code tidak ditemukan pada gambar.");
+  }
+
+  return results[0].rawValue;
+}
+
+/* =====================================================
+   11. SMART QR - KATEGORI QRIS ATAU URL
+   ===================================================== */
+
+function classifyQR(value) {
+  const content = String(value || "").trim();
+
+  if (content.startsWith("000201") || content.startsWith("000202")) {
+    return {
+      type: "qris",
+      payload: content
+    };
+  }
+
+  if (/^https?:\/\//i.test(content)) {
+    return {
+      type: "link",
+      url: content
+    };
+  }
+
+  return {
+    type: "other",
+    url: content
+  };
+}
+
+/* =====================================================
+   12. SIMPAN METODE PEMBAYARAN
+   ===================================================== */
+
+async function savePaymentMethod(data) {
+  if (!currentUser || !currentStore) {
+    throw new Error("Silakan login terlebih dahulu.");
+  }
+
+  const paymentCollection = collection(
     db,
     "stores",
-    currentStoreId,
+    currentStore.id,
     "payment_methods"
   );
 
-  const snapshot = await getDocs(ref);
-
-  $("paymentList").innerHTML = "";
-
-  snapshot.forEach(item => {
-    const data = item.data();
-
-    if (data.ownerUid !== auth.currentUser?.uid) return;
-
-    const box = document.createElement("div");
-    box.className = "result";
-
-    const title = document.createElement("strong");
-    title.textContent = data.title;
-
-    const detail = document.createElement("p");
-    detail.className = "muted";
-    detail.textContent = data.type + " - " + data.url;
-
-    const remove = document.createElement("button");
-    remove.textContent = "HAPUS";
-    remove.style.background = "#dc2626";
-
-    remove.onclick = async () => {
-      if (!confirm("Hapus pembayaran ini?")) return;
-
-      await deleteDoc(item.ref);
-      await loadPayments();
-    };
-
-    box.append(title, detail, remove);
-    $("paymentList").appendChild(box);
+  await addDoc(paymentCollection, {
+    ownerUid: currentUser.uid,
+    title: data.title || "Pembayaran",
+    type: data.type,
+    payload: data.payload || "",
+    url: data.url || "",
+    active: true,
+    position: currentPaymentMethods.length,
+    createdAt: serverTimestamp()
   });
 }
 
-// ==================================
-// 10. QR SCANNER
-// ==================================
+/* =====================================================
+   13. UPLOAD FOTO QRIS / QR PEMBAYARAN
+   ===================================================== */
 
-async function startScanner() {
+async function uploadPaymentQR(file) {
   try {
-    if (scanner) return;
+    const content = await decodeQRFromFile(file);
+    const detected = classifyQR(content);
 
-    scanner = new Html5Qrcode("reader");
-
-    await scanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 230, height: 230 } },
-      async decodedText => {
-        await scanner.stop();
-        scanner.clear();
-        scanner = null;
-
-        let storeId = decodedText.trim();
-
-if (storeId.startsWith("SCANNOMER:")) {
-  storeId = storeId.replace("SCANNOMER:", "");
-}
-
-storeId = storeId.replace(/\D/g, "");
-
-if (!storeId) {
-  alert("QR tidak berisi nomor HP toko.");
-  showScreen("home");
-  return;
-}
-
-        await findStore(storeId);
-      },
-      () => {}
+    const title = prompt(
+      detected.type === "qris"
+        ? "Nama metode pembayaran QRIS:"
+        : "Nama metode pembayaran:"
     );
 
-  } catch (error) {
-    scanner = null;
-    alert("Kamera tidak dapat dibuka: " + error);
-  }
-}
+    if (title === null) return;
 
-$("stopScan").onclick = async () => {
-  if (scanner) {
-    await scanner.stop();
-    scanner.clear();
-    scanner = null;
-  }
-
-  showScreen("home");
-};
-
-// ==================================
-// 11. PUBLIC STORE SEARCH
-// ==================================
-
-async function findStore(storeId) {
-  try {
-    const ref = doc(db, "stores", storeId);
-    const snap = await getDoc(ref);
-
-    if (!snap.exists() || !snap.data().published) {
-      alert("Toko tidak ditemukan atau belum dipublikasikan.");
-      showScreen("home");
-      return;
-    }
-
-    const store = snap.data();
-
-    $("resultStoreName").textContent = store.name;
-    $("resultStorePhone").textContent = store.phoneE164 || "";
-
-    const list = $("publicPayments");
-    list.innerHTML = "";
-
-    const methods = await getDocs(
-      collection(db, "stores", storeId, "payment_methods")
-    );
-
-    methods.forEach(item => {
-      const data = item.data();
-
-      if (data.active !== true) return;
-
-      const box = document.createElement("div");
-      box.className = "result";
-
-      const title = document.createElement("h3");
-      title.textContent = data.title;
-
-      box.appendChild(title);
-
-      if (data.type === "qris") {
-        const image = document.createElement("img");
-        image.src = data.url;
-        image.alt = "QRIS " + data.title;
-        image.style.width = "100%";
-        image.style.maxWidth = "300px";
-        image.style.display = "block";
-        image.style.margin = "15px auto";
-        image.onerror = () => {
-          image.alt = "Gambar QRIS tidak dapat ditampilkan";
-        };
-        box.appendChild(image);
-      }
-
-      const link = document.createElement("a");
-      link.href = data.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = data.type === "qris"
-        ? "BUKA QRIS"
-        : "BUKA " + data.title.toUpperCase();
-
-      link.style.display = "block";
-      link.style.padding = "14px";
-      link.style.background = "#7028df";
-      link.style.color = "white";
-      link.style.textAlign = "center";
-      link.style.borderRadius = "10px";
-      link.style.marginTop = "10px";
-
-      box.appendChild(link);
-      list.appendChild(box);
+    await savePaymentMethod({
+      title: title.trim() || "Pembayaran",
+      ...detected
     });
 
-    if (!list.children.length) {
-      list.textContent = "Toko belum menambahkan metode pembayaran.";
-    }
+    alert(
+      detected.type === "qris"
+        ? "QRIS berhasil disimpan."
+        : "QR berhasil dibaca dan disimpan."
+    );
 
-    showScreen("storeResult");
-
+    await loadPayments();
   } catch (error) {
     console.error(error);
-    alert("Gagal mencari toko: " + error.message);
+    alert(error.message || "Gagal membaca QR.");
   }
 }
 
-// ==================================
-// 12. LOGOUT
-// ==================================
+/* =====================================================
+   14. TAMBAH LINK PEMBAYARAN MANUAL
+   ===================================================== */
 
-$("logoutButton").onclick = async () => {
-  await signOut(auth);
-  alert("Berhasil logout.");
-};
+async function addManualPayment() {
+  const title = $("paymentTitle")?.value.trim();
+  const url = $("paymentUrl")?.value.trim();
+  const type = $("paymentType")?.value || "link";
 
-showScreen("home");
+  if (!title || !url) {
+    alert("Isi nama dan alamat pembayaran.");
+    return;
+  }
 
-console.log("SCANNOMER berhasil dimuat.");
+  if (type !== "qris" && !/^https?:\/\//i.test(url)) {
+    alert("Link harus diawali https:// atau http://");
+    return;
+  }
+
+  try {
+    await savePaymentMethod({
+      title,
+      type: type === "qris" ? "other" : type,
+      url
+    });
+
+    if ($("paymentTitle")) $("paymentTitle").value = "";
+    if ($("paymentUrl")) $("paymentUrl").value = "";
+
+    await loadPayments();
+
+    alert("Metode pembayaran berhasil ditambahkan.");
+  } catch (error) {
+    console.error(error);
+    alert("Gagal menambahkan pembayaran: " + error.message);
+  }
+}
+
+/* =====================================================
+   15. LOAD METODE PEMBAYARAN
+   ===================================================== */
+
+async function loadPayments() {
+  if (!currentStore) return;
+
+  try {
+    const ref = collection(
+      db,
+      "stores",
+      currentStore.id,
+      "payment_methods"
+    );
+
+    const snapshot = await getDocs(ref);
+
+    currentPaymentMethods = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    currentPaymentMethods.sort(
+      (a, b) => (a.position ?? 9999) - (b.position ?? 9999)
+    );
+
+    renderPayments();
+  } catch (error) {
+    console.error(error);
+    message($("loginMessage"), "Gagal memuat metode pembayaran.", true);
+  }
+}
+
+/* =====================================================
+   16. TAMPILKAN METODE PEMBAYARAN
+   ===================================================== */
+
+function renderPayments() {
+  const container = $("paymentList");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!currentPaymentMethods.length) {
+    container.innerHTML = "<p>Belum ada metode pembayaran.</p>";
+    return;
+  }
+
+  currentPaymentMethods.forEach((item, index) => {
+    const div = document.createElement("div");
+
+    div.style.cssText = `
+      padding:14px;
+      margin:10px 0;
+      border:1px solid #ddd;
+      border-radius:12px;
+      background:white;
+    `;
+
+    const isQRIS = item.type === "qris" && item.payload;
+
+    div.innerHTML = `
+      <strong>${escapeHTML(item.title || "Pembayaran")}</strong>
+      <p style="font-size:12px;color:#666;">
+        ${isQRIS ? "QRIS" : escapeHTML(item.type || "Link")}
+      </p>
+
+      <div class="payment-preview"></div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        <button data-action="edit">Edit</button>
+        <button data-action="up" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button data-action="down" ${index === currentPaymentMethods.length - 1 ? "disabled" : ""}>↓</button>
+        <button data-action="delete">Hapus</button>
+      </div>
+    `;
+
+    const preview = div.querySelector(".payment-preview");
+
+    if (isQRIS && window.QRCode) {
+      new QRCode(preview, {
+        text: item.payload,
+        width: 170,
+        height: 170
+      });
+    } else if (item.url && /^https?:\/\//i.test(item.url)) {
+      const link = document.createElement("a");
+      link.href = item.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Buka link pembayaran";
+      preview.appendChild(link);
+    } else if (item.url) {
+      preview.textContent = item.url;
+    }
+
+    div.querySelector('[data-action="delete"]').onclick =
+      () => deletePayment(item.id);
+
+    div.querySelector('[data-action="edit"]').onclick =
+      () => editPayment(item);
+
+    div.querySelector('[data-action="up"]').onclick =
+      () => movePayment(index, -1);
+
+    div.querySelector('[data-action="down"]').onclick =
+      () => movePayment(index, 1);
+
+    container.appendChild(div);
+  });
+}
+
+/* =====================================================
+   17. EDIT METODE PEMBAYARAN
+   ===================================================== */
+
+async function editPayment(item) {
+  const title = prompt("Nama pembayaran baru:", item.title || "");
+
+  if (title === null) return;
+
+  const ref = doc(
+    db,
+    "stores",
+    currentStore.id,
+    "payment_methods",
+    item.id
+  );
+
+  try {
+    await updateDoc(ref, {
+      title: title.trim() || "Pembayaran"
+    });
+
+    await loadPayments();
+  } catch (error) {
+    alert("Gagal mengedit: " + error.message);
+  }
+}
+
+/* =====================================================
+   18. HAPUS METODE PEMBAYARAN
+   ===================================================== */
+
+async function deletePayment(id) {
+  if (!confirm("Hapus metode pembayaran ini?")) return;
+
+  try {
+    await deleteDoc(
+      doc(db, "stores", currentStore.id, "payment_methods", id)
+    );
+
+    await loadPayments();
+  } catch (error) {
+    alert("Gagal menghapus: " + error.message);
+  }
+}
+
+/* =====================================================
+   19. ATUR URUTAN PEMBAYARAN
+   ===================================================== */
+
+async function movePayment(index, direction) {
+  const target = index + direction;
+
+  if (target < 0 || target >= currentPaymentMethods.length) return;
+
+  const first = currentPaymentMethods[index];
+  const second = currentPaymentMethods[target];
+
+  try {
+    await updateDoc(
+      doc(db, "stores", currentStore.id, "payment_methods", first.id),
+      { position: target }
+    );
+
+    await updateDoc(
+      doc(db, "stores", currentStore.id, "payment_methods", second.id),
+      { position: index }
+    );
+
+    await loadPayments();
+  } catch (error) {
+    alert("Gagal mengubah urutan: " + error.message);
+  }
+}
+
+/* =====================================================
+   20. PENCARIAN TOKO DARI NOMOR HP
+   ===================================================== */
+
+async function findStoreByPhone(phone) {
+  const id = storeIdFromPhone(phone);
+
+  if (!/^62[0-9]{8,13}$/.test(id)) {
+    throw new Error("Nomor HP Indonesia tidak valid.");
+  }
+
+  const snapshot = await getDoc(doc(db, "stores", id));
+
+  if (!snapshot.exists()) {
+    throw new Error("Toko belum terdaftar di SCANNOMER.");
+  }
+
+  const data = snapshot.data();
+
+  if (data.published === false) {
+    throw new Error("Toko belum dipublikasikan.");
+  }
+
+  currentStore = {
+    id,
+    ...data
+  };
+
+  show($("storeResult"), true);
+  show($("home"), false);
+
+  if ($("resultStoreName")) {
+    $("resultStoreName").textContent = data.name || "Nama Toko";
+  }
+
+  if ($("resultStorePhone")) {
+    $("resultStorePhone").textContent =
+      localPhone(data.phoneE164 || id);
+  }
+
+  await loadPublicPayments(id);
+
+  return data;
+}
+
+/* =====================================================
+   21. LOAD PEMBAYARAN PUBLIK
+   ===================================================== */
+
+async function loadPublicPayments(id) {
+  const container = $("publicPayments");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  const snapshot = await getDocs(
+    collection(db, "stores", id, "payment_methods")
+  );
+
+  const methods = snapshot.docs
+    .map(item => ({ id: item.id, ...item.data() }))
+    .filter(item => item.active !== false)
+    .sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999));
+
+  methods.forEach(item => {
+    const card = document.createElement("div");
+
+    card.style.cssText = `
+      padding:15px;
+      margin:10px 0;
+      border-radius:12px;
+      background:white;
+      border:1px solid #ddd;
+    `;
+
+    const title = document.createElement("strong");
+    title.textContent = item.title || "Pembayaran";
+    card.appendChild(title);
+
+    if (item.type === "qris" && item.payload && window.QRCode) {
+      const qr = document.createElement("div");
+      qr.style.marginTop = "12px";
+      card.appendChild(qr);
+
+      new QRCode(qr, {
+        text: item.payload,
+        width: 210,
+        height: 210
+      });
+
+      const info = document.createElement("p");
+      info.textContent = "Scan QRIS menggunakan aplikasi bank atau e-wallet.";
+      card.appendChild(info);
+    } else if (item.url && /^https?:\/\//i.test(item.url)) {
+      const link = document.createElement("a");
+      link.href = item.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Buka pembayaran";
+      link.style.display = "block";
+      link.style.marginTop = "12px";
+      card.appendChild(link);
+    }
+
+    container.appendChild(card);
+  });
+}
+
+/* =====================================================
+   22. OCR NOMOR HP DARI FOTO
+   ===================================================== */
+
+async function loadTesseract() {
+  if (window.Tesseract) return window.Tesseract;
+
+  await new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return window.Tesseract;
+}
+
+async function scanPhoneFromImage(file) {
+  try {
+    message($("loginMessage"), "Membaca nomor HP dari gambar...");
+
+    const Tesseract = await loadTesseract();
+
+    const result = await Tesseract.recognize(file, "eng");
+    const text = result.data.text || "";
+
+    console.log("OCR:", text);
+
+    const matches = text.match(/(?:\+?62|0)?[\s().-]*8(?:[\s().-]*\d){7,12}/g);
+
+    if (!matches || !matches.length) {
+      throw new Error("Nomor HP tidak ditemukan. Coba foto lebih jelas.");
+    }
+
+    const phone = normalizePhone(matches[0]);
+
+    await findStoreByPhone(phone);
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Gagal membaca nomor HP.");
+  }
+}
+
+/* =====================================================
+   23. KAMERA UNTUK OCR NOMOR HP
+   ===================================================== */
+
+async function startPhoneCamera() {
+  const section = $("scannerSection");
+  if (!section) return;
+
+  show(section, true);
+
+  section.innerHTML = `
+    <h3>Scan Nomer HP</h3>
+    <p>Arahkan kamera ke kartu digital SCANNOMER.</p>
+    <video id="phoneCamera" autoplay playsinline
+      style="width:100%;border-radius:15px;"></video>
+    <button id="capturePhone">Ambil Foto</button>
+    <button id="closePhoneCamera">Tutup Kamera</button>
+    <canvas id="phoneCanvas" style="display:none;"></canvas>
+  `;
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false
+    });
+
+    $("phoneCamera").srcObject = cameraStream;
+
+    $("capturePhone").onclick = async () => {
+      const video = $("phoneCamera");
+      const canvas = $("phoneCanvas");
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      canvas.getContext("2d").drawImage(video, 0, 0);
+
+      canvas.toBlob(async blob => {
+        await stopPhoneCamera();
+        await scanPhoneFromImage(blob);
+      }, "image/jpeg", 0.95);
+    };
+
+    $("closePhoneCamera").onclick = stopPhoneCamera;
+  } catch (error) {
+    console.error(error);
+    alert("Tidak dapat membuka kamera: " + error.message);
+  }
+}
+
+async function stopPhoneCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+
+  show($("scannerSection"), false);
+}
+
+/* =====================================================
+   24. TAMBAHKAN KONTROL UPLOAD SMART QR DAN OCR
+   ===================================================== */
+
+function installExtraControls() {
+  // Upload QR pembayaran
+  if ($("paymentList") && !$("paymentQRUpload")) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.id = "paymentQRUpload";
+    input.accept = "image/*";
+    input.style.display = "block";
+    input.style.margin = "12px 0";
+
+    const label = document.createElement("label");
+    label.textContent = "Upload Foto QRIS / QR Pembayaran";
+    label.style.display = "block";
+    label.style.fontWeight = "bold";
+    label.style.marginTop = "15px";
+
+    input.onchange = event => {
+      const file = event.target.files?.[0];
+      if (file) uploadPaymentQR(file);
+      input.value = "";
+    };
+
+    $("paymentList").parentElement.insertBefore(
+      label,
+      $("paymentList")
+    );
+
+    $("paymentList").parentElement.insertBefore(
+      input,
+      $("paymentList")
+    );
+  }
+
+  // Upload foto nomor HP
+  if ($("scanButton") && !$("phoneImageUpload")) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.id = "phoneImageUpload";
+    input.accept = "image/*";
+    input.style.display = "none";
+
+    input.onchange = event => {
+      const file = event.target.files?.[0];
+      if (file) scanPhoneFromImage(file);
+      input.value = "";
+    };
+
+    document.body.appendChild(input);
+
+    const uploadButton = document.createElement("button");
+    uploadButton.textContent = "Scan dari Galeri";
+    uploadButton.type = "button";
+    uploadButton.onclick = () => input.click();
+
+    $("scanButton").insertAdjacentElement("afterend", uploadButton);
+
+    const cameraButton = document.createElement("button");
+    cameraButton.textContent = "Scan Nomer HP dengan Kamera";
+    cameraButton.type = "button";
+    cameraButton.onclick = startPhoneCamera;
+
+    uploadButton.insertAdjacentElement("afterend", cameraButton);
+  }
+}
+
+/* =====================================================
+   25. EVENT LISTENERS
+   ===================================================== */
+
+function bind(id, event, callback) {
+  const element = $(id);
+  if (element) element.addEventListener(event, callback);
+}
+
+bind("loginButton", "click", openLogin);
+bind("closeLogin", "click", closeLogin);
+bind("sendOtp", "click", sendOTP);
+bind("verifyOtp", "click", verifyOTP);
+bind("saveStore", "click", saveStore);
+bind("addPayment", "click", addManualPayment);
+bind("downloadQr", "click", downloadCard);
+
+bind("logoutButton", "click", async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+bind("backHome", "click", () => {
+  show($("storeResult"), false);
+  show($("home"), true);
+});
+
+bind("scanButton", "click", startPhoneCamera);
+
+bind("stopScan", "click", stopPhoneCamera);
+
+/* =====================================================
+   26. INIT
+   ===================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+  installExtraControls();
+
+  show($("otpArea"), false);
+  show($("dashboard"), false);
+  show($("storeResult"), false);
+
+  // Kartu digital tidak boleh menampilkan QR identitas.
+  if ($("storeQr")) {
+    $("storeQr").innerHTML = "";
+    $("storeQr").style.display = "none";
+  }
+
+  console.log("SCANNOMER Smart QR siap dijalankan.");
+});
+
