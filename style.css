@@ -1,48 +1,620 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root{--primary:#7028df;--dark:#21103e;--light:#f7f5fc;--text:#241b35;--muted:#81778f;--border:#eee8f7}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Inter,sans-serif;background:var(--light);color:var(--text);min-height:100vh}
-header{background:linear-gradient(135deg,#35116b,#792de0);padding:25px 20px 65px;color:#fff;border-radius:0 0 28px 28px}
-header h1{font-size:25px;font-weight:800;letter-spacing:1px}header p{font-size:10px;margin-top:5px;letter-spacing:2px;opacity:.8}
-main{max-width:550px;margin:-38px auto 0;padding:0 16px 30px}
-.hero,.features{background:#fff;padding:25px 20px;border-radius:22px;box-shadow:0 10px 35px #2c105014}
-.hero{text-align:center}.scan-icon{width:76px;height:76px;margin:0 auto 18px;display:grid;place-items:center;border-radius:22px;color:#fff;background:linear-gradient(135deg,#7028df,#a56af5);font-size:25px;font-weight:800}
-.hero h2{font-size:21px;margin-bottom:12px}.hero p{font-size:13px;line-height:1.7;color:var(--muted)}
-button{border:0;border-radius:13px;padding:15px 18px;background:var(--primary);color:#fff;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:14px}
-button:active{transform:scale(.99)}.dark-button{background:#24143d}.gray-button{background:#777}.danger-button{background:#dc2626}
-.features{margin-top:18px}.features h3{font-size:16px;margin-bottom:14px}.features p{padding:10px 0;font-size:13px;border-bottom:1px solid var(--border)}.features p:last-child{border:0}
-input,select{width:100%;padding:14px;border:1px solid var(--border);border-radius:12px;margin-top:9px;font-size:14px;outline:none;background:#fff;color:var(--text)}
-input:focus,select:focus{border-color:var(--primary)}
-input[type=color]{height:52px;padding:5px;cursor:pointer}
-.card{background:#fff;border-radius:18px;padding:20px;margin-top:16px;box-shadow:0 5px 20px #2c10500a}.hidden{display:none!important}
-.muted{color:var(--muted);font-size:12px;line-height:1.6;margin-top:7px}
-.section-heading{font-size:16px;margin-top:24px;margin-bottom:10px}
-label{display:block;font-size:12px;font-weight:700;margin-top:14px}
-.result{margin-top:13px;padding:14px;background:#f3edff;border-radius:12px;overflow-wrap:anywhere}
-footer{text-align:center;padding:20px;color:var(--muted);font-size:11px}
-.business-card-editor,.smart-qr{margin-top:22px}
-.store-business-card{--card-primary:#7028df;--card-background:#21103e;margin-top:18px;padding:24px 16px;border-radius:22px;background:linear-gradient(145deg,var(--card-background),var(--card-primary));color:#fff;box-shadow:0 15px 35px #0003;text-align:center;min-height:300px;display:flex;flex-direction:column;justify-content:space-between;gap:20px;overflow:hidden}
-.business-card-top,.business-card-bottom{display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:1.5px;font-weight:800}.business-card-tag{font-size:8px;opacity:.7}
-.business-card-content{padding:24px 0}.business-card-label{font-size:9px;letter-spacing:3px;opacity:.75;margin-bottom:10px}
-.business-card-content h2{font-size:clamp(22px,6vw,30px);font-weight:800;overflow-wrap:anywhere}
-.business-card-content h3{font-size:clamp(23px,7vw,34px);letter-spacing:1px;margin:16px 0 12px;overflow-wrap:anywhere}
-.business-card-content>p:not(.business-card-label){font-size:11px;margin-top:8px;opacity:.8}
-.business-card-divider{height:1px;background:#ffffff40;margin:22px 10px}
-.business-card-scan{font-size:11px!important;letter-spacing:4px;font-weight:800;margin-top:16px!important}
-.store-business-card[data-design=gold]{background:linear-gradient(145deg,#090909,#30220a);border:2px solid #c9a64c}
-.store-business-card[data-design=gold] h2,.store-business-card[data-design=gold] h3{color:#e9c66c}
-.store-business-card[data-design=minimal]{background:#fff;color:#21103e;border:2px solid #eee8f7}
-.store-business-card[data-design=minimal] .business-card-divider{background:#ddd}
-.store-business-card[data-design=neon]{background:linear-gradient(145deg,#10002b,#4100a5);border:2px solid #c084fc;box-shadow:0 0 25px #a050ff66}
-.camera-preview{width:100%;max-height:360px;object-fit:cover;background:#111;border-radius:14px;margin-top:12px}
-.file-label{display:block;text-align:center;padding:14px;border-radius:12px;background:#eee6ff;color:#5120a5;margin-top:12px;font-size:12px;font-weight:800}
-.qr-reader{width:100%;margin-top:12px}
-.payment-item{background:#f7f3ff;border:1px solid var(--border);padding:14px;border-radius:13px;margin-top:12px;overflow-wrap:anywhere}
-.payment-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.payment-actions button{padding:10px 5px;font-size:10px;margin-top:10px}
-.payment-actions .delete{background:#dc2626}
-.qr-display{background:#fff;padding:12px;border-radius:12px;display:flex;justify-content:center;margin:12px auto;max-width:240px}
-.qr-display img,.qr-display canvas{max-width:100%;height:auto}
-.public-payment{background:#f7f3ff;border-radius:14px;padding:15px;margin-top:14px}
-.public-payment a{display:block;text-align:center;text-decoration:none;background:#7028df;color:#fff;border-radius:11px;padding:14px;margin-top:10px;font-size:13px;font-weight:800}
-@media print{body *{visibility:hidden!important}#storeCard,#storeCard *{visibility:visible!important}#storeCard{position:absolute;left:0;top:0;width:90mm;min-height:55mm;margin:0;box-shadow:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}@page{size:100mm 65mm;margin:5mm}}
+
+/* =====================================================
+   SCANNOMER - STYLE CSS
+   Premium Digital Phone Number Marketplace
+   ===================================================== */
+
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #7028df;
+  --primary-dark: #5415b5;
+  --primary-light: #eee5ff;
+  --secondary: #a855f7;
+  --background: #f7f5fc;
+  --surface: #ffffff;
+  --text: #201a2b;
+  --muted: #81778e;
+  --border: #e9e2f2;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --radius: 18px;
+  --shadow: 0 8px 25px rgba(64, 25, 110, 0.08);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* GENERAL */
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  transition: 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* HEADER */
+
+header {
+  width: 100%;
+  background: var(--surface);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo,
+header h1 {
+  color: var(--primary);
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+header nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* MAIN CONTAINER */
+
+main,
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+}
+
+section {
+  margin-bottom: 24px;
+}
+
+/* HERO */
+
+.hero {
+  padding: 45px 25px;
+  border-radius: 25px;
+  background: linear-gradient(
+    135deg,
+    #7028df,
+    #a855f7,
+    #c084fc
+  );
+  color: white;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.hero h1 {
+  font-size: clamp(28px, 7vw, 45px);
+  line-height: 1.2;
+  margin-bottom: 15px;
+}
+
+.hero p {
+  max-width: 600px;
+  margin: auto;
+  color: rgba(255,255,255,0.9);
+}
+
+/* SECTION TITLE */
+
+h2 {
+  font-size: 23px;
+  margin-bottom: 15px;
+  font-weight: 800;
+}
+
+h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+p {
+  margin-bottom: 10px;
+}
+
+small {
+  color: var(--muted);
+}
+
+/* CARD */
+
+.card,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+
+.card h3,
+.panel h3 {
+  color: var(--primary);
+}
+
+/* BUTTONS */
+
+button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--primary);
+  color: white;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  min-height: 44px;
+}
+
+button:hover,
+.btn:hover {
+  background: var(--primary-dark);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+button.secondary,
+.btn-secondary {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+button.secondary:hover,
+.btn-secondary:hover {
+  background: #e0d0ff;
+}
+
+button.danger {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+button.success {
+  background: #dcfce7;
+  color: var(--success);
+}
+
+/* INPUTS */
+
+input,
+textarea,
+select {
+  display: block;
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  outline: none;
+  color: var(--text);
+  margin: 8px 0 15px;
+  min-height: 46px;
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(112, 40, 223, 0.1);
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+/* LOGIN */
+
+#loginSection {
+  max-width: 430px;
+  margin: 35px auto;
+  padding: 25px;
+  background: white;
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+#loginSection h2 {
+  text-align: center;
+  color: var(--primary);
+}
+
+#loginMessage {
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+#otpArea {
+  margin-top: 15px;
+}
+
+/* DASHBOARD */
+
+#dashboard {
+  max-width: 1000px;
+  margin: auto;
+  padding: 20px;
+}
+
+.dashboard-header {
+  background: linear-gradient(135deg, #7028df, #a855f7);
+  color: white;
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.dashboard-header h2 {
+  color: white;
+}
+
+/* DIGITAL CARD */
+
+#digitalCard {
+  width: 100%;
+  max-width: 500px;
+  margin: 20px auto;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+#digitalCard > div {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#digitalCard h2 {
+  color: white;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+#cardPhone {
+  font-size: 28px;
+  font-weight: 900;
+}
+
+#storeQr {
+  display: none !important;
+}
+
+/* STORE SEARCH */
+
+.search-box {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.search-box input {
+  flex: 1;
+  margin: 0;
+}
+
+.search-box button {
+  white-space: nowrap;
+}
+
+/* SCANNER */
+
+#scannerSection {
+  background: white;
+  padding: 18px;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  margin: 20px 0;
+}
+
+#phoneCamera,
+video {
+  display: block;
+  width: 100%;
+  max-height: 450px;
+  object-fit: cover;
+  background: #111;
+  border-radius: 15px;
+  margin: 15px 0;
+}
+
+#phoneCanvas {
+  display: none;
+}
+
+/* PAYMENT METHODS */
+
+#paymentList,
+#publicPayments {
+  margin-top: 15px;
+}
+
+#paymentList > div,
+#publicPayments > div {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+}
+
+#paymentList strong,
+#publicPayments strong {
+  display: block;
+  color: var(--primary);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+#paymentList button {
+  margin: 4px 3px 0 0;
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+#paymentList img,
+#publicPayments img {
+  display: block;
+  margin: 12px auto;
+  max-width: 100%;
+  height: auto;
+}
+
+/* QR CODE PEMBAYARAN */
+
+#paymentList canvas,
+#paymentList img,
+#publicPayments canvas,
+#publicPayments img {
+  background: white;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+/* RESULT STORE */
+
+#storeResult {
+  background: white;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+  margin-top: 20px;
+}
+
+#resultStoreName {
+  font-size: 25px;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+#resultStorePhone {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  overflow-wrap: anywhere;
+}
+
+/* RECENT / EMPTY STATE */
+
+.empty-state {
+  text-align: center;
+  padding: 35px 15px;
+  color: var(--muted);
+}
+
+/* BADGES */
+
+.badge {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 5px 10px;
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* GRID */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+/* FOOTER */
+
+footer {
+  text-align: center;
+  padding: 30px 15px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 35px;
+  border-top: 1px solid var(--border);
+}
+
+/* HIDDEN ELEMENTS */
+
+[hidden] {
+  display: none !important;
+}
+
+/* RESPONSIVE TABLET */
+
+@media (max-width: 768px) {
+  main,
+  .container {
+    padding: 15px;
+  }
+
+  header {
+    padding: 13px 15px;
+  }
+
+  header h1,
+  .logo {
+    font-size: 20px;
+  }
+
+  .hero {
+    padding: 35px 18px;
+  }
+
+  .card,
+  .panel {
+    padding: 17px;
+  }
+}
+
+/* RESPONSIVE PHONE */
+
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  main,
+  .container {
+    padding: 12px;
+  }
+
+  header {
+    padding: 12px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  .hero h1 {
+    font-size: 29px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box {
+    flex-direction: column;
+  }
+
+  .search-box button {
+    width: 100%;
+  }
+
+  button,
+  .btn {
+    min-height: 44px;
+  }
+
+  #digitalCard {
+    margin: 15px auto;
+  }
+
+  #cardPhone,
+  #resultStorePhone {
+    font-size: 23px;
+  }
+
+  #loginSection {
+    margin: 20px 12px;
+    padding: 20px;
+  }
+
+  #dashboard {
+    padding: 12px;
+  }
+
+  #paymentList button {
+    font-size: 11px;
+    padding: 7px 9px;
+  }
+}
+
+/* PRINT DIGITAL CARD */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #digitalCard,
+  #digitalCard * {
+    visibility: visible;
+  }
+
+  #digitalCard {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: none;
+  }
+
+  #digitalCard > div {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
