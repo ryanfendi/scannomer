@@ -279,38 +279,128 @@ $("saveStore").onclick = async () => {
 };
 
 
+
 // ==================================
-// 7. STORE QR GENERATOR
+// 7. SCANNOMER BUSINESS CARD
 // ==================================
 
 function renderStoreQr() {
-  if (!currentStoreId || !$("storeQr")) return;
+  const user = auth.currentUser;
 
-  $("storeQr").innerHTML = "";
+  if (!user || !user.phoneNumber || !currentStoreId) {
+    return;
+  }
 
-  const qrData = "SCANNOMER:" + currentStoreId;
+  const name = $("storeName").value.trim() || "NAMA TOKO";
+  const address = $("storeAddress").value.trim() || "Alamat toko";
 
-  new QRCode($("storeQr"), {
-    text: qrData,
-    width: 190,
-    height: 190,
-    correctLevel: QRCode.CorrectLevel.M
+  $("cardShopName").textContent = name;
+  $("cardAddress").textContent = address;
+  $("cardPhone").textContent = user.phoneNumber;
+
+  const qrContainer = $("storeQr");
+  qrContainer.innerHTML = "";
+
+  // QR berisi nomor HP toko tanpa tanda +
+  const phoneQR = currentStoreId;
+
+  new QRCode(qrContainer, {
+    text: phoneQR,
+    width: 180,
+    height: 180,
+    correctLevel: QRCode.CorrectLevel.H
   });
 }
 
-$("downloadQr").onclick = () => {
-  const canvas = $("storeQr").querySelector("canvas");
+// ==================================
+// 8. BUSINESS CARD DESIGN
+// ==================================
 
-  if (!canvas) {
+function updateBusinessCard() {
+  const card = $("storeCard");
+
+  const design = $("cardDesign").value;
+  const primary = $("cardColor").value;
+  const background = $("cardBgColor").value;
+
+  card.dataset.design = design;
+
+  card.style.setProperty(
+    "--card-primary",
+    primary
+  );
+
+  card.style.setProperty(
+    "--card-background",
+    background
+  );
+
+  renderStoreQr();
+}
+
+$("cardDesign").onchange = updateBusinessCard;
+$("cardColor").oninput = updateBusinessCard;
+$("cardBgColor").oninput = updateBusinessCard;
+
+$("storeName").addEventListener("input", renderStoreQr);
+$("storeAddress").addEventListener("input", renderStoreQr);
+
+// ==================================
+// 9. DOWNLOAD BUSINESS CARD
+// ==================================
+
+$("downloadQr").onclick = async () => {
+  try {
+    if (!currentStoreId) {
+      alert("Simpan profil toko terlebih dahulu.");
+      return;
+    }
+
+    const canvas = await html2canvas(
+      $("storeCard"),
+      {
+        scale: 3,
+        backgroundColor: null,
+        useCORS: true
+      }
+    );
+
+    const link = document.createElement("a");
+
+    link.download =
+      "SCANNOMER-" +
+      currentStoreId +
+      ".png";
+
+    link.href = canvas.toDataURL("image/png");
+
+    link.click();
+
+  } catch (error) {
+    console.error(error);
+    alert("Gagal mengunduh kartu: " + error.message);
+  }
+};
+
+// ==================================
+// 10. PRINT BUSINESS CARD
+// ==================================
+
+$("printCard").onclick = () => {
+  if (!currentStoreId) {
     alert("Simpan profil toko terlebih dahulu.");
     return;
   }
 
-  const link = document.createElement("a");
-  link.download = "SCANNOMER-QR.png";
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+  window.print();
 };
+
+// ==================================
+// 11. SCANNOMER BUSINESS CARD INIT
+// ==================================
+
+$("cardDesign").value = "purple";
+updateBusinessCard();
 
 // ==================================
 // 8. ADD PAYMENT METHODS
