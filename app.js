@@ -209,47 +209,75 @@ async function loadStore() {
   await loadPayments();
 }
 
+
 $("saveStore").onclick = async () => {
   try {
     const user = auth.currentUser;
-    if (!user || !user.phoneNumber) return;
+
+    if (!user) {
+      alert("Silakan login terlebih dahulu.");
+      return;
+    }
+
+    if (!user.phoneNumber) {
+      alert("Nomor HP belum terverifikasi.");
+      return;
+    }
 
     const name = $("storeName").value.trim();
     const address = $("storeAddress").value.trim();
 
-    if (!name) {
-      alert("Nama toko harus diisi.");
+    if (!name || !address) {
+      alert("Nama dan alamat toko wajib diisi.");
       return;
     }
 
-    currentStoreId = storeDocumentId(user.phoneNumber);
+    currentStoreId = user.phoneNumber.replace(/\D/g, "");
 
     const ref = doc(db, "stores", currentStoreId);
+
+    // Periksa dokumen toko
     const old = await getDoc(ref);
 
-    if (old.exists() && old.data().ownerUid !== user.uid) {
-      alert("Nomor toko sudah dimiliki akun lain.");
-      return;
+    if (old.exists()) {
+      if (old.data().ownerUid !== user.uid) {
+        alert("Nomor toko sudah dimiliki akun lain.");
+        return;
+      }
     }
 
+    // Simpan profil toko
     await setDoc(ref, {
       ownerUid: user.uid,
       phoneE164: user.phoneNumber,
-      name,
-      address,
+      name: name,
+      address: address,
       published: true,
       updatedAt: serverTimestamp()
     }, { merge: true });
 
+    // Pastikan data berhasil tersimpan
+    const verify = await getDoc(ref);
+
+    if (!verify.exists()) {
+      throw new Error("Dokumen toko belum berhasil dibuat.");
+    }
+
     renderStoreQr();
 
-    alert("Profil toko berhasil disimpan!");
+    alert("BERHASIL! Profil toko SCANNOMER tersimpan.");
 
   } catch (error) {
-    console.error(error);
-    alert("Gagal menyimpan: " + error.message);
+    console.error("SCANNOMER SAVE ERROR:", error);
+
+    alert(
+      "Gagal menyimpan profil toko.\n\n" +
+      "Kode: " + (error.code || "unknown") +
+      "\nPesan: " + error.message
+    );
   }
 };
+
 
 // ==================================
 // 7. STORE QR GENERATOR
