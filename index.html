@@ -2,158 +2,459 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#7028df">
-  <title>SCANNOMER - Scan Number, Connect Payment</title>
+
+  <meta name="description" content="SCANNOMER - Temukan toko dengan scan nomor HP dan akses pembayaran digital.">
+
+  <title>SCANNOMER - Scan Nomer HP</title>
+
   <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <!-- QR Code Generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <!-- Download Digital Card -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 </head>
+
 <body>
-<header>
-  <h1>SCANNOMER</h1>
-  <p>SCAN NUMBER. CONNECT PAYMENT.</p>
-</header>
 
-<main>
-  <section class="hero" id="home">
-    <div class="scan-icon">01</div>
-    <h2>Satu Nomor, Banyak Tujuan</h2>
-    <p>Pindai tulisan nomor HP pada kartu digital toko untuk menemukan QRIS dan tautan pembayaran.</p>
-    <button id="scanButton">SCAN NOMOR HP TOKO</button>
-    <button id="loginButton" class="dark-button">LOGIN PEMILIK TOKO</button>
-  </section>
+  <!-- =================================================
+       HEADER
+       ================================================= -->
 
-  <section class="card hidden" id="scannerSection">
-    <h3>Scan Nomor HP</h3>
-    <p class="muted">Arahkan kamera ke kartu digital SCANNOMER, lalu tekan AMBIL GAMBAR. Pastikan nomor terlihat jelas.</p>
-    <video id="numberVideo" class="camera-preview" autoplay playsinline></video>
-    <button id="captureNumber">AMBIL GAMBAR & BACA NOMOR</button>
-    <label class="file-label" for="numberImage">Atau pilih foto kartu dari galeri</label>
-    <input id="numberImage" type="file" accept="image/*" capture="environment">
-    <p id="ocrMessage" class="muted"></p>
-    <div id="numberConfirm" class="hidden">
-      <label>Nomor yang terdeteksi</label>
-      <input id="detectedPhone" inputmode="tel" placeholder="08xxxxxxxxxx">
-      <button id="openDetectedStore">BUKA TOKO</button>
-    </div>
-    <button id="stopNumberCamera" class="gray-button">TUTUP KAMERA</button>
-  </section>
+  <header>
+    <h1 class="logo">SCANNOMER</h1>
 
-  <section class="card hidden" id="loginSection">
-    <h3>Login Pemilik Toko</h3>
-    <p class="muted">Masukkan nomor HP. Bisa memakai format 08..., 628..., atau +62...</p>
-    <input id="phoneInput" type="tel" inputmode="tel" placeholder="085601817789">
-    <div id="recaptcha-container"></div>
-    <button id="sendOtp">KIRIM KODE OTP</button>
-    <div id="otpArea" class="hidden">
-      <input id="otpInput" type="text" inputmode="numeric" maxlength="6" placeholder="Masukkan 6 digit OTP">
-      <button id="verifyOtp">VERIFIKASI OTP</button>
-    </div>
-    <p id="loginMessage" class="muted"></p>
-    <button id="closeLogin" class="gray-button">KEMBALI</button>
-  </section>
+    <nav>
+      <button type="button" id="loginButton">
+        Login Pemilik
+      </button>
+    </nav>
+  </header>
 
-  <section class="card hidden" id="dashboard">
-    <h3>Dashboard Pemilik Toko</h3>
-    <p id="ownerInfo" class="muted"></p>
 
-    <h3 class="section-heading">Profil Toko</h3>
-    <input id="storeName" placeholder="Nama toko">
-    <input id="storeAddress" placeholder="Alamat toko">
-    <p class="muted">Nomor kartu otomatis mengikuti nomor HP yang sudah diverifikasi.</p>
-    <button id="saveStore">SIMPAN PROFIL TOKO</button>
+  <!-- =================================================
+       HOME
+       ================================================= -->
 
-    <div class="business-card-editor">
-      <h3 class="section-heading">Kartu Digital Nomor HP</h3>
-      <p class="muted">Kartu ini tidak menggunakan QR Code. Nomor HP ditampilkan besar agar dapat dibaca kamera.</p>
-      <label>Model Desain</label>
-      <select id="cardDesign">
-        <option value="purple">Luxury Purple</option>
-        <option value="gold">Black Gold</option>
-        <option value="minimal">Minimalist</option>
-        <option value="neon">Neon Future</option>
-      </select>
-      <label>Warna Utama</label>
-      <input type="color" id="cardColor" value="#7028df">
-      <label>Warna Background</label>
-      <input type="color" id="cardBgColor" value="#21103e">
+  <main id="home">
 
-      <div id="storeCard" class="store-business-card" data-design="purple">
-        <div class="business-card-top">
-          <span>SCANNOMER</span><span class="business-card-tag">DIGITAL STORE CARD</span>
-        </div>
-        <div class="business-card-content">
-          <p class="business-card-label">NAMA TOKO</p>
-          <h2 id="cardShopName">NAMA TOKO</h2>
-          <p id="cardAddress">Alamat toko</p>
-          <div class="business-card-divider"></div>
-          <p class="business-card-label">NOMOR HP</p>
-          <h3 id="cardPhone">08xxxxxxxxxx</h3>
-          <p class="business-card-scan">SCAN NOMER HP</p>
-        </div>
-        <div class="business-card-bottom">SCAN NUMBER. CONNECT PAYMENT.</div>
+    <section class="hero">
+
+      <h1>SCAN NOMER HP</h1>
+
+      <p>
+        Temukan toko, kenali pemilik usaha,
+        dan akses metode pembayaran dengan mudah.
+      </p>
+
+      <div style="margin-top:25px;">
+        <button type="button" id="scanButton">
+          Scan Nomor HP
+        </button>
       </div>
-      <button id="downloadCard">DOWNLOAD KARTU PNG</button>
-      <button id="printCard" class="dark-button">CETAK KARTU TOKO</button>
+
+    </section>
+
+
+    <!-- PENCARIAN NOMOR HP -->
+
+    <section class="card">
+
+      <h2>Cari Toko</h2>
+
+      <p>
+        Masukkan nomor HP pemilik toko.
+      </p>
+
+      <div class="search-box">
+
+        <input
+          type="tel"
+          id="searchPhone"
+          placeholder="Contoh: 085601817789"
+          autocomplete="tel"
+        >
+
+        <button type="button" id="searchStoreButton">
+          Cari Toko
+        </button>
+
+      </div>
+
+      <p style="font-size:12px;color:#81778e;">
+        Gunakan nomor HP yang terdaftar di SCANNOMER.
+      </p>
+
+    </section>
+
+
+    <!-- AREA KAMERA OCR -->
+
+    <section id="scannerSection" style="display:none;">
+
+      <h3>Scan Nomer HP</h3>
+
+      <p>
+        Arahkan kamera ke nomor HP yang tercetak
+        pada kartu digital SCANNOMER.
+      </p>
+
+    </section>
+
+
+    <!-- HASIL TOKO -->
+
+    <section id="storeResult" style="display:none;">
+
+      <h2>Informasi Toko</h2>
+
+      <div class="card">
+
+        <h2 id="resultStoreName">
+          Nama Toko
+        </h2>
+
+        <p style="font-size:12px;">
+          NOMOR HP
+        </p>
+
+        <div id="resultStorePhone">
+          085600000000
+        </div>
+
+      </div>
+
+      <h3>Metode Pembayaran</h3>
+
+      <div id="publicPayments"></div>
+
+      <button type="button" class="secondary" id="backHome">
+        Kembali
+      </button>
+
+    </section>
+
+
+    <!-- FOOTER HOME -->
+
+    <footer>
+      <strong>SCANNOMER</strong>
+      <p>Scan Nomer HP, Connect Payment.</p>
+      <p>© 2026 SCANNOMER</p>
+    </footer>
+
+  </main>
+
+
+  <!-- =================================================
+       LOGIN PEMILIK TOKO
+       ================================================= -->
+
+  <section id="loginSection" style="display:none;">
+
+    <h2>Login Pemilik Toko</h2>
+
+    <p>
+      Masuk menggunakan nomor HP yang sudah terdaftar.
+    </p>
+
+    <label for="phoneInput">
+      Nomor HP
+    </label>
+
+    <input
+      type="tel"
+      id="phoneInput"
+      placeholder="085601817789"
+      autocomplete="tel"
+    >
+
+    <div id="recaptcha-container"></div>
+
+    <button type="button" id="sendOtp">
+      Kirim Kode OTP
+    </button>
+
+
+    <div id="otpArea" style="display:none;">
+
+      <label for="otpInput">
+        Kode OTP
+      </label>
+
+      <input
+        type="text"
+        id="otpInput"
+        placeholder="Masukkan kode OTP"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+      >
+
+      <button type="button" id="verifyOtp">
+        Verifikasi OTP
+      </button>
+
     </div>
 
-    <div class="smart-qr">
-      <h3 class="section-heading">Smart QR — Tambah Pembayaran</h3>
-      <p class="muted">Upload gambar QR atau foto dengan kamera. Isi QR diproses di HP; gambar tidak diunggah ke Firebase Storage.</p>
-      <label>Nama metode pembayaran</label>
-      <input id="paymentTitle" placeholder="Contoh: QRIS Utama / Website">
-      <label>Jenis metode</label>
+
+    <p id="loginMessage"></p>
+
+    <button type="button" class="secondary" id="closeLogin">
+      Kembali
+    </button>
+
+  </section>
+
+
+  <!-- =================================================
+       DASHBOARD PEMILIK
+       ================================================= -->
+
+  <section id="dashboard" style="display:none;">
+
+    <div class="dashboard-header">
+
+      <h2>Dashboard SCANNOMER</h2>
+
+      <p>
+        Selamat datang, pemilik toko.
+      </p>
+
+      <p>
+        Nomor HP:
+        <strong id="ownerInfo"></strong>
+      </p>
+
+      <button type="button" id="logoutButton" class="secondary">
+        Logout
+      </button>
+
+    </div>
+
+
+    <!-- PROFIL TOKO -->
+
+    <div class="panel">
+
+      <h2>Profil Toko</h2>
+
+      <label for="storeName">
+        Nama Toko
+      </label>
+
+      <input
+        type="text"
+        id="storeName"
+        placeholder="Contoh: Ryan Store"
+      >
+
+      <label for="storeAddress">
+        Alamat Toko
+      </label>
+
+      <textarea
+        id="storeAddress"
+        placeholder="Masukkan alamat toko"
+      ></textarea>
+
+      <button type="button" id="saveStore">
+        Simpan Profil
+      </button>
+
+    </div>
+
+
+    <!-- KARTU DIGITAL -->
+
+    <div class="panel">
+
+      <h2>Kartu Digital Nomor HP</h2>
+
+      <p>
+        Kartu digital hanya menampilkan nama toko
+        dan nomor HP. Tidak menggunakan QR Code.
+      </p>
+
+      <div id="digitalCard">
+
+        <div style="
+          background:linear-gradient(135deg,#7028df,#a855f7);
+          color:white;
+          padding:30px 20px;
+          border-radius:22px;
+          text-align:center;
+        ">
+
+          <div style="
+            font-size:12px;
+            letter-spacing:3px;
+          ">
+            SCANNOMER
+          </div>
+
+          <h2 id="cardStoreName" style="margin:22px 0 12px;">
+            NAMA TOKO
+          </h2>
+
+          <div style="
+            font-size:12px;
+            letter-spacing:2px;
+          ">
+            SCAN NOMER HP
+          </div>
+
+          <div id="cardPhone" style="
+            font-size:27px;
+            font-weight:900;
+            margin:12px 0;
+          ">
+            085600000000
+          </div>
+
+          <div id="cardAddress" style="font-size:12px;">
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- QR IDENTITAS TIDAK DIGUNAKAN -->
+      <div id="storeQr" style="display:none;"></div>
+
+      <button type="button" id="downloadQr">
+        Download Kartu PNG
+      </button>
+
+      <button
+        type="button"
+        class="secondary"
+        onclick="window.print()"
+      >
+        Cetak Kartu
+      </button>
+
+    </div>
+
+
+    <!-- METODE PEMBAYARAN -->
+
+    <div class="panel">
+
+      <h2>Smart QR Pembayaran</h2>
+
+      <p>
+        Upload gambar QRIS atau QR pembayaran.
+        SCANNOMER akan membaca isi QR secara otomatis.
+      </p>
+
+      <label for="paymentTitle">
+        Nama Pembayaran
+      </label>
+
+      <input
+        type="text"
+        id="paymentTitle"
+        placeholder="Contoh: QRIS Toko"
+      >
+
+      <label for="paymentType">
+        Jenis Pembayaran
+      </label>
+
       <select id="paymentType">
-        <option value="auto">Deteksi otomatis (disarankan)</option>
-        <option value="qris">QRIS</option>
-        <option value="link">Link pembayaran</option>
-        <option value="website">Website / toko online</option>
-        <option value="other">Link lainnya</option>
+
+        <option value="link">
+          Link Pembayaran
+        </option>
+
+        <option value="other">
+          QR / Metode Lain
+        </option>
+
       </select>
-      <label class="file-label" for="smartQrImage">PILIH FOTO QR DARI GALERI</label>
-      <input id="smartQrImage" type="file" accept="image/*">
-      <button id="startQrCamera" class="dark-button">FOTO / SCAN QR DENGAN KAMERA</button>
-      <div id="smartQrReader" class="qr-reader"></div>
-      <button id="stopQrCamera" class="gray-button hidden">TUTUP KAMERA QR</button>
-      <p id="smartQrMessage" class="muted"></p>
-      <div id="smartQrPreview" class="result hidden"></div>
-      <p class="muted">Atau masukkan URL secara manual:</p>
-      <input id="paymentUrl" type="url" placeholder="https://alamat-pembayaran.com">
-      <button id="addPayment">SIMPAN METODE PEMBAYARAN</button>
+
+      <label for="paymentUrl">
+        Link Pembayaran
+      </label>
+
+      <input
+        type="url"
+        id="paymentUrl"
+        placeholder="https://contoh.com"
+      >
+
+      <button type="button" id="addPayment">
+        Tambahkan Link
+      </button>
+
+
+      <div style="margin-top:25px;">
+
+        <h3>Daftar Metode Pembayaran</h3>
+
+        <p>
+          Kamu dapat mengedit, menghapus,
+          dan mengatur urutannya.
+        </p>
+
+        <div id="paymentList"></div>
+
+      </div>
+
     </div>
 
-    <h3 class="section-heading">Daftar Pembayaran</h3>
-    <p class="muted">Gunakan tombol ATAS/BAWAH untuk mengatur urutan tampilan di halaman pelanggan.</p>
-    <div id="paymentList"></div>
-    <button id="logoutButton" class="danger-button">KELUAR</button>
+
+    <!-- FOOTER DASHBOARD -->
+
+    <footer>
+      <strong>SCANNOMER OWNER</strong>
+      <p>Kelola toko dan pembayaran digital.</p>
+    </footer>
+
   </section>
 
-  <section class="card hidden" id="storeResult">
-    <h3 id="resultStoreName">TOKO</h3>
-    <p id="resultStorePhone" class="muted"></p>
-    <p id="resultStoreAddress" class="muted"></p>
-    <div id="publicPayments"></div>
-    <button id="backHome" class="gray-button">KEMBALI</button>
-  </section>
 
-  <section class="features">
-    <h3>Fitur SCANNOMER</h3>
-    <p>✓ Scan nomor HP dari kartu menggunakan OCR</p>
-    <p>✓ Kartu digital tanpa QR Code</p>
-    <p>✓ Upload dan foto QRIS / QR link</p>
-    <p>✓ Deteksi payload QRIS dan URL</p>
-    <p>✓ Kelola metode pembayaran</p>
-    <p>✓ Login pemilik toko dengan OTP</p>
-  </section>
-</main>
+  <!-- =================================================
+       JAVASCRIPT
+       ================================================= -->
 
-<footer>
-  <p>© 2026 SCANNOMER</p>
-  <p>SCAN NUMBER. CONNECT PAYMENT.</p>
-</footer>
-<script type="module" src="app.js"></script>
+  <script type="module" src="app.js"></script>
+
+
+  <!-- =================================================
+       SEARCH STORE SCRIPT
+       ================================================= -->
+
+  <script type="module">
+
+    // Tombol pencarian nomor HP
+    document
+      .getElementById("searchStoreButton")
+      .addEventListener("click", () => {
+
+        const phone =
+          document.getElementById("searchPhone").value.trim();
+
+        if (!phone) {
+          alert("Masukkan nomor HP terlebih dahulu.");
+          return;
+        }
+
+        // Event akan diteruskan ke fungsi global
+        if (window.searchSCANNOMERStore) {
+          window.searchSCANNOMERStore(phone);
+        } else {
+          alert("Fitur pencarian sedang disiapkan.");
+        }
+
+      });
+
+  </script>
+
 </body>
 </html>
