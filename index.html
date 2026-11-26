@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -61,12 +62,74 @@
     <input id="storeAddress" placeholder="Alamat toko">
     <button id="saveStore">SIMPAN PROFIL TOKO</button>
 
-    <div class="result">
-      <h3>QR Identitas Toko</h3>
-      <div id="storeQr" style="display:flex;justify-content:center;padding:15px"></div>
-      <p class="muted">Pelanggan memindai QR ini untuk menemukan pembayaran toko.</p>
-      <button id="downloadQr">DOWNLOAD QR TOKO</button>
+    
+<div class="business-card-editor">
+
+  <h3>Kartu Digital Nomor HP Toko</h3>
+  <p class="muted">
+    Buat kartu toko keren dengan QR nomor HP.
+    Pelanggan cukup scan untuk menemukan toko.
+  </p>
+
+  <label>Model Desain</label>
+  <select id="cardDesign">
+    <option value="purple">Luxury Purple</option>
+    <option value="gold">Black Gold</option>
+    <option value="minimal">Minimalist</option>
+    <option value="neon">Neon Future</option>
+  </select>
+
+  <label>Warna Utama</label>
+  <input type="color" id="cardColor" value="#7028df">
+
+  <label>Warna Background</label>
+  <input type="color" id="cardBgColor" value="#21103e">
+
+  <div id="storeCard" class="store-business-card">
+
+    <div class="business-card-top">
+      <span>SCANNOMER</span>
+      <span class="business-card-tag">SMART BUSINESS</span>
     </div>
+
+    <div class="business-card-content">
+
+      <p class="business-card-label">WELCOME TO</p>
+
+      <h2 id="cardShopName">NAMA TOKO</h2>
+
+      <p id="cardAddress">Alamat toko</p>
+
+      <div class="business-card-divider"></div>
+
+      <p class="business-card-label">CONTACT NUMBER</p>
+
+      <h3 id="cardPhone">+6281234567890</h3>
+
+      <div id="storeQr" class="business-card-qr"></div>
+
+      <p class="business-card-scan">
+        SCAN TO CONNECT WITH THIS STORE
+      </p>
+
+    </div>
+
+    <div class="business-card-bottom">
+      SCAN NUMBER. CONNECT PAYMENT.
+    </div>
+
+  </div>
+
+  <button id="downloadQr">
+    DOWNLOAD KARTU PNG
+  </button>
+
+  <button id="printCard" style="background:#21103e">
+    CETAK KARTU TOKO
+  </button>
+
+</div>
+
 
     <h3 style="margin-top:25px">Tambah QRIS / Link</h3>
     <input id="paymentTitle" placeholder="Nama, contoh: QRIS Utama">
